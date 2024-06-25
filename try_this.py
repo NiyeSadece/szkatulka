@@ -10,9 +10,12 @@ vertex_shader_source = """
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aColor;
 layout(location = 2) in vec2 aTexCoord;
+layout(location = 3) in vec3 aNormal;
 
 out vec3 ourColor;
 out vec2 TexCoord;
+out vec3 FragPos;
+out vec3 Normal;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -23,6 +26,8 @@ void main()
     gl_Position = projection * view * model * vec4(aPos, 1.0);
     ourColor = aColor;
     TexCoord = aTexCoord;
+    FragPos = vec3(model * vec4(aPos, 1.0));
+    Normal = mat3(transpose(inverse(model))) * aNormal;
 }
 
 
@@ -35,12 +40,29 @@ out vec4 FragColor;
 
 in vec3 ourColor;
 in vec2 TexCoord;
+in vec3 FragPos;
+in vec3 Normal;
 
 uniform sampler2D ourTexture;
+uniform vec3 lightPos;
+uniform vec3 viewPos;
+uniform vec3 lightColor;
 
 void main()
 {
-    FragColor = texture(ourTexture, TexCoord) * vec4(ourColor, 1.0);
+    // Ambient
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * lightColor;
+
+    // Diffuse
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * lightColor;
+
+    // Combine results
+    vec3 result = (ambient + diffuse) * ourColor;
+    FragColor = texture(ourTexture, TexCoord) * vec4(result, 1.0);
 }
 
 """
@@ -50,77 +72,77 @@ lid_angle = 0.0
 
 vertices = [
     # Larger box vertices
-    -1.5, -0.5, 1.0,  1.0, 1.0, 1.0,  0.0, 0.0,
-    1.5, -0.5, 1.0,   1.0, 1.0, 1.0,  1.0, 0.0,
-    1.5, 0.5, 1.0,    1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, -0.5, 1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, 1.0,
+    1.5, -0.5, 1.0,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, 1.0,
+    1.5, 0.5, 1.0,    1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, 1.0,
+    -1.5, 0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, 1.0,
 
-    -1.5, -0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,
-    1.5, -0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 0.0,
-    1.5, 0.5, -1.0,    1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.5, -1.0,   1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, -0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, -1.0,
+    1.5, -0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, -1.0,
+    1.5, 0.5, -1.0,    1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, -1.0,
+    -1.5, 0.5, -1.0,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, -1.0,
 
-    1.5, -0.5, 1.0,    1.0, 1.0, 1.0,  0.0, 0.0,
-    1.5, -0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 0.0,
-    1.5, 0.5, -1.0,    1.0, 1.0, 1.0,  1.0, 1.0,
-    1.5, 0.5, 1.0,     1.0, 1.0, 1.0,  0.0, 1.0,
+    1.5, -0.5, 1.0,    1.0, 1.0, 1.0,  0.0, 0.0,  -1.0, 0.0, 0.0,
+    1.5, -0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 0.0,  -1.0, 0.0, 0.0,
+    1.5, 0.5, -1.0,    1.0, 1.0, 1.0,  1.0, 1.0,  -1.0, 0.0, 0.0,
+    1.5, 0.5, 1.0,     1.0, 1.0, 1.0,  0.0, 1.0,  -1.0, 0.0, 0.0,
 
-    -1.5, -0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 0.0,
-    -1.5, -0.5, -1.0,  1.0, 1.0, 1.0,  1.0, 0.0,
-    -1.5, 0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.5, 1.0,    1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, -0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 0.0,  1.0, 0.0, 0.0,
+    -1.5, -0.5, -1.0,  1.0, 1.0, 1.0,  1.0, 0.0,  1.0, 0.0, 0.0,
+    -1.5, 0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 1.0,  1.0, 0.0, 0.0,
+    -1.5, 0.5, 1.0,    1.0, 1.0, 1.0,  0.0, 1.0,  1.0, 0.0, 0.0,
 
-    -1.5, -0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 0.0,
-    1.5, -0.5, 1.0,    1.0, 1.0, 1.0,  1.0, 0.0,
-    1.5, -0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, -0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, -0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 0.0,  0.0, -1.0, 0.0,
+    1.5, -0.5, 1.0,    1.0, 1.0, 1.0,  1.0, 0.0,  0.0, -1.0, 0.0,
+    1.5, -0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 1.0,  0.0, -1.0, 0.0,
+    -1.5, -0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  0.0, -1.0, 0.0,
 
     # Smaller box vertices - y moved by 0.01 to avoid clipping
-    -1.4, -0.49, 0.8,  1.0, 1.0, 1.0,  0.0, 0.0,
-    1.4, -0.49, 0.8,   1.0, 1.0, 1.0,  1.0, 0.0,
-    1.4, 0.51, 0.8,    1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.4, 0.51, 0.8,   1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.4, -0.49, 0.8,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, -1.0,
+    1.4, -0.49, 0.8,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, -1.0,
+    1.4, 0.51, 0.8,    1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, -1.0,
+    -1.4, 0.51, 0.8,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, -1.0,
 
-    -1.4, -0.49, -0.8,  1.0, 1.0, 1.0,  0.0, 0.0,
-    1.4, -0.49, -0.8,   1.0, 1.0, 1.0,  1.0, 0.0,
-    1.4, 0.51, -0.8,    1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.4, 0.51, -0.8,   1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.4, -0.49, -0.8,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, 1.0,
+    1.4, -0.49, -0.8,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, 1.0,
+    1.4, 0.51, -0.8,    1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, 1.0,
+    -1.4, 0.51, -0.8,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, 1.0,
 
-    1.4, -0.49, 0.8,    1.0, 1.0, 1.0,  0.0, 0.0,
-    1.4, -0.49, -0.8,   1.0, 1.0, 1.0,  1.0, 0.0,
-    1.4, 0.51, -0.8,    1.0, 1.0, 1.0,  1.0, 1.0,
-    1.4, 0.51, 0.8,     1.0, 1.0, 1.0,  0.0, 1.0,
+    1.4, -0.49, 0.8,    1.0, 1.0, 1.0,  0.0, 0.0,  -1.0, 0.0, 0.0,
+    1.4, -0.49, -0.8,   1.0, 1.0, 1.0,  1.0, 0.0,  -1.0, 0.0, 0.0,
+    1.4, 0.51, -0.8,    1.0, 1.0, 1.0,  1.0, 1.0,  -1.0, 0.0, 0.0,
+    1.4, 0.51, 0.8,     1.0, 1.0, 1.0,  0.0, 1.0,  -1.0, 0.0, 0.0,
 
-    -1.4, -0.49, 0.8,   1.0, 1.0, 1.0,  0.0, 0.0,
-    -1.4, -0.49, -0.8,  1.0, 1.0, 1.0,  1.0, 0.0,
-    -1.4, 0.51, -0.8,   1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.4, 0.51, 0.8,    1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.4, -0.49, 0.8,   1.0, 1.0, 1.0,  0.0, 0.0,  1.0, 0.0, 0.0,
+    -1.4, -0.49, -0.8,  1.0, 1.0, 1.0,  1.0, 0.0,  1.0, 0.0, 0.0,
+    -1.4, 0.51, -0.8,   1.0, 1.0, 1.0,  1.0, 1.0,  1.0, 0.0, 0.0,
+    -1.4, 0.51, 0.8,    1.0, 1.0, 1.0,  0.0, 1.0,  1.0, 0.0, 0.0,
 
-    -1.4, -0.49, 0.8,   1.0, 1.0, 1.0,  0.0, 0.0,
-    1.4, -0.49, 0.8,    1.0, 1.0, 1.0,  1.0, 0.0,
-    1.4, -0.49, -0.8,   1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.4, -0.49, -0.8,  1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.4, -0.49, 0.8,   1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 1.0, 0.0,
+    1.4, -0.49, 0.8,    1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 1.0, 0.0,
+    1.4, -0.49, -0.8,   1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 1.0, 0.0,
+    -1.4, -0.49, -0.8,  1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 1.0, 0.0,
 
     # Connecting faces vertices
-    -1.5, 0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 0.0,
-    -1.4, 0.5, 0.8,   1.0, 1.0, 1.0,  1.0, 0.0,
-    -1.4, 0.51, -0.8,  1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.51, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, 0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 1.0, 0.0,
+    -1.4, 0.5, 0.8,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 1.0, 0.0,
+    -1.4, 0.51, -0.8,  1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 1.0, 0.0,
+    -1.5, 0.51, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 1.0, 0.0,
 
-    1.5, 0.5, 1.0,    1.0, 1.0, 1.0,  0.0, 0.0,
-    1.4, 0.5, 0.8,    1.0, 1.0, 1.0,  1.0, 0.0,
-    1.4, 0.51, -0.8,   1.0, 1.0, 1.0,  1.0, 1.0,
-    1.5, 0.51, -1.0,   1.0, 1.0, 1.0,  0.0, 1.0,
+    1.5, 0.5, 1.0,    1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 1.0, 0.0,
+    1.4, 0.5, 0.8,    1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 1.0, 0.0,
+    1.4, 0.51, -0.8,   1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 1.0, 0.0,
+    1.5, 0.51, -1.0,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 1.0, 0.0,
 
-    -1.4, 0.5, 0.8,   1.0, 1.0, 1.0,  0.0, 0.0,
-    1.4, 0.5, 0.8,    1.0, 1.0, 1.0,  1.0, 0.0,
-    1.5, 0.51, 1.0,    1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.51, 1.0,   1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.4, 0.5, 0.8,   1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 1.0, 0.0,
+    1.4, 0.5, 0.8,    1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 1.0, 0.0,
+    1.5, 0.51, 1.0,    1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 1.0, 0.0,
+    -1.5, 0.51, 1.0,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 1.0, 0.0,
 
-    -1.4, 0.5, -0.8,  1.0, 1.0, 1.0,  0.0, 0.0,
-    1.4, 0.5, -0.8,   1.0, 1.0, 1.0,  1.0, 0.0,
-    1.5, 0.51, -1.0,   1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.51, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.4, 0.5, -0.8,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 1.0, 0.0,
+    1.4, 0.5, -0.8,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 1.0, 0.0,
+    1.5, 0.51, -1.0,   1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 1.0, 0.0,
+    -1.5, 0.51, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 1.0, 0.0,
 ]
 
 indices = [
@@ -147,40 +169,40 @@ indices = [
 
 lid_vertices = [
     # Bottom face
-    -1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,
-     1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  1.0, 0.0,
-     1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, -1.0, 0.0,
+     1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  1.0, 0.0,  0.0, -1.0, 0.0,
+     1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,  0.0, -1.0, 0.0,
+    -1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  0.0, -1.0, 0.0,
 
     # Top face
-    -1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,
-     1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  1.0, 0.0,
-     1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 1.0, 0.0,
+     1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 1.0, 0.0,
+     1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 1.0, 0.0,
+    -1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 1.0, 0.0,
 
     # Front face
-    -1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  0.0, 0.0,
-     1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  1.0, 0.0,
-     1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, 1.0,
+     1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, 1.0,
+     1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, 1.0,
+    -1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, 1.0,
 
     # Back face
-    -1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,
-     1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  1.0, 0.0,
-     1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, -1.0,
+     1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, -1.0,
+     1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, -1.0,
+    -1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, -1.0,
 
     # Left face
-    -1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,
-    -1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  1.0, 0.0,
-    -1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,
-    -1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,
+    -1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  -1.0, 0.0, 0.0,
+    -1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  1.0, 0.0,  -1.0, 0.0, 0.0,
+    -1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,  -1.0, 0.0, 0.0,
+    -1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  -1.0, 0.0, 0.0,
 
     # Right face
-     1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,
-     1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  1.0, 0.0,
-     1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,
-     1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,
+     1.5, 0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  1.0, 0.0, 0.0,
+     1.5, 0.5,  1.0,  1.0, 1.0, 1.0,  1.0, 0.0,  1.0, 0.0, 0.0,
+     1.5, 0.7,  1.0,  1.0, 1.0, 1.0,  1.0, 1.0,  1.0, 0.0, 0.0,
+     1.5, 0.7, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  1.0, 0.0, 0.0,
 ]
 
 lid_indices = [
@@ -240,9 +262,12 @@ def compile_shader(source, shader_type):
 
 def create_shader_program(vertex_source, fragment_source):
     vertex_shader = compile_shader(vertex_source, GL_VERTEX_SHADER)
-    fragment_shader = compile_shader(fragment_source, GL_FRAGMENT_SHADER)
+    if not vertex_shader:
+        return None
 
-    if not vertex_shader or not fragment_shader:
+    fragment_shader = compile_shader(fragment_source, GL_FRAGMENT_SHADER)
+    if not fragment_shader:
+        glDeleteShader(vertex_shader)
         return None
 
     shader_program = glCreateProgram()
@@ -253,6 +278,9 @@ def create_shader_program(vertex_source, fragment_source):
     if not glGetProgramiv(shader_program, GL_LINK_STATUS):
         info_log = glGetProgramInfoLog(shader_program)
         print(f"ERROR::SHADER::PROGRAM::LINKING_FAILED\n{info_log.decode()}")
+        glDeleteShader(vertex_shader)
+        glDeleteShader(fragment_shader)
+        glDeleteProgram(shader_program)
         return None
 
     glDeleteShader(vertex_shader)
@@ -277,15 +305,19 @@ def setup_vertex_data(vertices, indices):
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices, GL_STATIC_DRAW)
 
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * vertices.itemsize, ctypes.c_void_p(0))
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * vertices.itemsize, ctypes.c_void_p(0))
     glEnableVertexAttribArray(0)
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * vertices.itemsize, ctypes.c_void_p(3 * vertices.itemsize))
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 11 * vertices.itemsize, ctypes.c_void_p(3 * vertices.itemsize))
     glEnableVertexAttribArray(1)
 
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * vertices.itemsize, ctypes.c_void_p(6 * vertices.itemsize))
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 11 * vertices.itemsize, ctypes.c_void_p(6 * vertices.itemsize))
     glEnableVertexAttribArray(2)
 
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 11 * vertices.itemsize, ctypes.c_void_p(8 * vertices.itemsize))
+    glEnableVertexAttribArray(3)
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0)
     glBindVertexArray(0)
 
     return VAO, VBO, EBO
@@ -303,7 +335,10 @@ def generate_sphere(radius, sector_count, stack_count):
             sector_angle = j * 2 * np.pi / sector_count
             x = xy * np.cos(sector_angle)
             y = xy * np.sin(sector_angle)
-            vertices.extend([x, y, z, 1.0, 1.0, 1.0, x / radius, y / radius])
+            nx = x / radius
+            ny = y / radius
+            nz = z / radius
+            vertices.extend([x, y, z, 1.0, 1.0, 1.0, x / radius, y / radius, nx, ny, nz])
 
     for i in range(stack_count):
         k1 = i * (sector_count + 1)
@@ -329,9 +364,13 @@ def main():
         return
 
     glfw.make_context_current(window)
+    glEnable(GL_DEPTH_TEST)
     glfw.set_key_callback(window, key_callback)
 
     shader_program = create_shader_program(vertex_shader_source, fragment_shader_source)
+    if not shader_program:
+        glfw.terminate()
+        return
 
     # Setup vertex data for the merged boxes
     merged_boxes_VAO, merged_boxes_VBO, merged_boxes_EBO = setup_vertex_data(vertices, indices)
@@ -347,15 +386,16 @@ def main():
     wood_texture = load_texture('wood_texture.jpg')
     pearl_texture = load_texture('pearl_texture.jpg')
 
-    glEnable(GL_DEPTH_TEST)
-
     view = glm.lookAt(glm.vec3(2.0, 5.0, 5.0), glm.vec3(0.0, 0.0, 0.0), glm.vec3(0.0, 1.0, 0.0))
     projection = glm.perspective(glm.radians(45.0), 800 / 600, 0.1, 100.0)
+
+    light_pos = glm.vec3(2.0, 2.0, 2.0)
+    light_color = glm.vec3(1.0, 1.0, 1.0)
+    view_pos = glm.vec3(0.0, 0.0, 3.0)
 
 
     while not glfw.window_should_close(window):
         glfw.poll_events()
-        current_time = glfw.get_time()
 
         glClearColor(0.2, 0.3, 0.3, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -366,6 +406,9 @@ def main():
         view_loc = glGetUniformLocation(shader_program, "view")
         proj_loc = glGetUniformLocation(shader_program, "projection")
         texture_loc = glGetUniformLocation(shader_program, "ourTexture")
+        glUniform3fv(glGetUniformLocation(shader_program, "lightPos"), 1, glm.value_ptr(light_pos))
+        glUniform3fv(glGetUniformLocation(shader_program, "lightColor"), 1, glm.value_ptr(light_color))
+        glUniform3fv(glGetUniformLocation(shader_program, "viewPos"), 1, glm.value_ptr(view_pos))
 
         glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm.value_ptr(view))
         glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm.value_ptr(projection))
@@ -415,7 +458,6 @@ def main():
 
         glfw.swap_buffers(window)
 
-    glfw.terminate()
 
 
 if __name__ == "__main__":
