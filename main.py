@@ -1,6 +1,5 @@
 import glfw
 from OpenGL.GL import *
-from PIL import Image
 import numpy as np
 import glm
 from shaders.shaders import create_shader_program
@@ -43,7 +42,6 @@ def setup_vertex_data(vertices, indices):
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO)
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.nbytes, indices, GL_STATIC_DRAW)
 
-
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 11 * vertices.itemsize, ctypes.c_void_p(0))
     glEnableVertexAttribArray(0)
 
@@ -60,6 +58,7 @@ def setup_vertex_data(vertices, indices):
     glBindVertexArray(0)
 
     return VAO, VBO, EBO
+
 
 def load_shader_source(file_path):
     with open(file_path, 'r') as file:
