@@ -67,57 +67,104 @@ void main()
 
 """
 
+fragment_shader_source_pearl = """
+#version 330 core
+out vec4 FragColor;
+
+in vec3 FragPos;
+in vec3 Normal;
+in vec3 ourColor;
+
+uniform vec3 lightPos;
+uniform vec3 viewPos;
+uniform vec3 lightColor;
+
+void main()
+{
+    // Ambient
+    float ambientStrength = 0.1;
+    vec3 ambient = ambientStrength * lightColor;
+
+    // Diffuse
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * lightColor;
+
+    // Specular
+    float specularStrength = 0.5;
+    vec3 viewDir = normalize(viewPos - FragPos);
+    vec3 reflectDir = reflect(-lightDir, norm);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    vec3 specular = specularStrength * spec * lightColor;
+
+    // Combine results
+    vec3 result = (ambient + diffuse + specular) * ourColor;
+    FragColor = vec4(result, 1.0);
+}
+"""
+
 angle = 0.0
 lid_angle = 0.0
 
 vertices = [
     # Larger box vertices
+    # front
     -1.5, -0.5, 1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, 1.0,
     1.5, -0.5, 1.0,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, 1.0,
     1.5, 0.5, 1.0,    1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, 1.0,
     -1.5, 0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, 1.0,
 
+    # back
     -1.5, -0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, -1.0,
     1.5, -0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, -1.0,
     1.5, 0.5, -1.0,    1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, -1.0,
     -1.5, 0.5, -1.0,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, -1.0,
 
+    # right
     1.5, -0.5, 1.0,    1.0, 1.0, 1.0,  0.0, 0.0,  1.0, 0.0, 0.0,
     1.5, -0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 0.0,  1.0, 0.0, 0.0,
     1.5, 0.5, -1.0,    1.0, 1.0, 1.0,  1.0, 1.0,  1.0, 0.0, 0.0,
     1.5, 0.5, 1.0,     1.0, 1.0, 1.0,  0.0, 1.0,  1.0, 0.0, 0.0,
 
+    # left
     -1.5, -0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 0.0,  -1.0, 0.0, 0.0,
     -1.5, -0.5, -1.0,  1.0, 1.0, 1.0,  1.0, 0.0,  -1.0, 0.0, 0.0,
     -1.5, 0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 1.0,  -1.0, 0.0, 0.0,
     -1.5, 0.5, 1.0,    1.0, 1.0, 1.0,  0.0, 1.0,  -1.0, 0.0, 0.0,
 
+    # bottom
     -1.5, -0.5, 1.0,   1.0, 1.0, 1.0,  0.0, 0.0,  0.0, -1.0, 0.0,
     1.5, -0.5, 1.0,    1.0, 1.0, 1.0,  1.0, 0.0,  0.0, -1.0, 0.0,
     1.5, -0.5, -1.0,   1.0, 1.0, 1.0,  1.0, 1.0,  0.0, -1.0, 0.0,
     -1.5, -0.5, -1.0,  1.0, 1.0, 1.0,  0.0, 1.0,  0.0, -1.0, 0.0,
 
     # Smaller box vertices - y moved by 0.01 to avoid clipping
+    # facing back
     -1.4, -0.49, 0.8,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, -1.0,
     1.4, -0.49, 0.8,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, -1.0,
     1.4, 0.51, 0.8,    1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, -1.0,
     -1.4, 0.51, 0.8,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, -1.0,
 
+    # facing front
     -1.4, -0.49, -0.8,  1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 0.0, 1.0,
     1.4, -0.49, -0.8,   1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 0.0, 1.0,
     1.4, 0.51, -0.8,    1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 0.0, 1.0,
     -1.4, 0.51, -0.8,   1.0, 1.0, 1.0,  0.0, 1.0,  0.0, 0.0, 1.0,
 
+    # right??? brain confused with 3d
     1.4, -0.49, 0.8,    1.0, 1.0, 1.0,  0.0, 0.0,  -1.0, 0.0, 0.0,
     1.4, -0.49, -0.8,   1.0, 1.0, 1.0,  1.0, 0.0,  -1.0, 0.0, 0.0,
     1.4, 0.51, -0.8,    1.0, 1.0, 1.0,  1.0, 1.0,  -1.0, 0.0, 0.0,
     1.4, 0.51, 0.8,     1.0, 1.0, 1.0,  0.0, 1.0,  -1.0, 0.0, 0.0,
 
+    # left???
     -1.4, -0.49, 0.8,   1.0, 1.0, 1.0,  0.0, 0.0,  1.0, 0.0, 0.0,
     -1.4, -0.49, -0.8,  1.0, 1.0, 1.0,  1.0, 0.0,  1.0, 0.0, 0.0,
     -1.4, 0.51, -0.8,   1.0, 1.0, 1.0,  1.0, 1.0,  1.0, 0.0, 0.0,
     -1.4, 0.51, 0.8,    1.0, 1.0, 1.0,  0.0, 1.0,  1.0, 0.0, 0.0,
 
+    # bottom
     -1.4, -0.49, 0.8,   1.0, 1.0, 1.0,  0.0, 0.0,  0.0, 1.0, 0.0,
     1.4, -0.49, 0.8,    1.0, 1.0, 1.0,  1.0, 0.0,  0.0, 1.0, 0.0,
     1.4, -0.49, -0.8,   1.0, 1.0, 1.0,  1.0, 1.0,  0.0, 1.0, 0.0,
@@ -372,6 +419,11 @@ def main():
         glfw.terminate()
         return
 
+    shader_program_pearl = create_shader_program(vertex_shader_source, fragment_shader_source_pearl)
+    if not shader_program_pearl:
+        glfw.terminate()
+        return
+
     # Setup vertex data for the merged boxes
     merged_boxes_VAO, merged_boxes_VBO, merged_boxes_EBO = setup_vertex_data(vertices, indices)
 
@@ -437,6 +489,18 @@ def main():
         glBindVertexArray(lid_VAO)
         glDrawElements(GL_TRIANGLES, len(lid_indices), GL_UNSIGNED_INT, None)
         glBindVertexArray(0)
+
+        glUseProgram(shader_program_pearl)
+
+        model_loc = glGetUniformLocation(shader_program_pearl, "model")
+        view_loc = glGetUniformLocation(shader_program_pearl, "view")
+        proj_loc = glGetUniformLocation(shader_program_pearl, "projection")
+        texture_loc = glGetUniformLocation(shader_program_pearl, "ourTexture")
+        glUniform3fv(glGetUniformLocation(shader_program_pearl, "lightPos"), 1, glm.value_ptr(light_pos))
+        glUniform3fv(glGetUniformLocation(shader_program_pearl, "lightColor"), 1, glm.value_ptr(light_color))
+        glUniform3fv(glGetUniformLocation(shader_program_pearl, "viewPos"), 1, glm.value_ptr(view_pos))
+        glUniformMatrix4fv(view_loc, 1, GL_FALSE, glm.value_ptr(view))
+        glUniformMatrix4fv(proj_loc, 1, GL_FALSE, glm.value_ptr(projection))
 
         glBindTexture(GL_TEXTURE_2D, pearl_texture)
         glUniform1i(texture_loc, 0)
