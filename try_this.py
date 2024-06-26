@@ -1,3 +1,5 @@
+# this is a messing around file with everything in it cuz last time i forked something reaaaally bad
+# and it's easier to ctrl + z in one file when you don't remember all the changes
 import glfw
 from OpenGL.GL import *
 from PIL import Image
@@ -67,6 +69,7 @@ void main()
 
 """
 
+# Fragment shader for pears
 fragment_shader_source_pearl = """
 #version 330 core
 out vec4 FragColor;
@@ -319,6 +322,7 @@ def compile_shader(source, shader_type):
         return None
     return shader
 
+
 def create_shader_program(vertex_source, fragment_source):
     vertex_shader = compile_shader(vertex_source, GL_VERTEX_SHADER)
     if not vertex_shader:
@@ -346,6 +350,7 @@ def create_shader_program(vertex_source, fragment_source):
     glDeleteShader(fragment_shader)
 
     return shader_program
+
 
 def setup_vertex_data(vertices, indices):
     vertices = np.array(vertices, dtype=np.float32)
@@ -540,9 +545,5 @@ def main():
         glfw.swap_buffers(window)
 
 
-
 if __name__ == "__main__":
     main()
-
-
-
